@@ -178,7 +178,7 @@ const requestPasswordReset = async (email) => {
     );
     return { link: '' };
   } else {
-    return { link };
+    return { link: '' };
   }
 };
 
