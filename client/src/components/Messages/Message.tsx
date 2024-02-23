@@ -118,7 +118,7 @@ export default function Message(props: TMessageProps) {
 
   const copyToClipboard = (setIsCopied: React.Dispatch<React.SetStateAction<boolean>>) => {
     setIsCopied(true);
-    copy(text ?? '');
+    copy(text ?? '', { format: 'text/plain' });
 
     setTimeout(() => {
       setIsCopied(false);
