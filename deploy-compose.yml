@@ -4,10 +4,10 @@ services:
     deploy:
       resources:
         limits:
-          cpu: "0.1"
+          cpus: "0.1"
           memory: 100M
         reservations:
-          cpu: "0.0001"
+          cpus: "0.0001"
           memory: 20M
     build:
       context: .
@@ -36,10 +36,10 @@ services:
     deploy:
       resources:
         limits:
-          cpu: "0.1"
+          cpus: "0.1"
           memory: 50M
         reservations:
-          cpu: "0.0001"
+          cpus: "0.0001"
           memory: 5M
     build:
       context: .
@@ -59,10 +59,10 @@ services:
     deploy:
       resources:
         limits:
-          cpu: "0.1"
+          cpus: "0.1"
           memory: 100M
         reservations:
-          cpu: "0.0001"
+          cpus: "0.0001"
           memory: 20M
     container_name: chat-mongodb
     # ports:  # Uncomment this to access mongodb from outside docker, not safe in deployment
