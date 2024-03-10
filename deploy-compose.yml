@@ -4,8 +4,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.1"
-          memory: 100M
+          cpus: "0.2"
+          memory: 150M
         reservations:
           cpus: "0.0001"
           memory: 20M
@@ -73,6 +73,14 @@ services:
       - ./data-node:/data/db
     command: mongod --noauth
   meilisearch:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 50M
+        reservations:
+          cpus: "0.0001"
+          memory: 10M
     container_name: chat-meilisearch
     image: getmeili/meilisearch:v1.0
     # ports: # Uncomment this to access meilisearch from outside docker
