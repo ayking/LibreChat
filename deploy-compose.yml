@@ -1,6 +1,14 @@
 version: "3.8"
 services:
   api:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.3"
+          memory: 150M
+        reservations:
+          cpus: "0.0001"
+          memory: 20M
     build:
       context: .
       dockerfile: Dockerfile.multi
@@ -25,6 +33,14 @@ services:
       - ./images:/app/client/public/images
       - ./librechat.yaml:/app/librechat.yaml
   client:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 50M
+        reservations:
+          cpus: "0.0001"
+          memory: 10M
     build:
       context: .
       dockerfile: Dockerfile.multi
@@ -41,6 +57,14 @@ services:
       - ./certbot/conf/:/var/www/certbot/:ro
       - ./acme-challenge/:/var/www/acme-challenge/:ro
   mongodb:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.3"
+          memory: 100M
+        reservations:
+          cpus: "0.0001"
+          memory: 20M
     container_name: chat-mongodb
     # ports:  # Uncomment this to access mongodb from outside docker, not safe in deployment
     #   - 27018:27017
@@ -50,6 +74,14 @@ services:
       - ./data-node:/data/db
     command: mongod --noauth
   meilisearch:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 50M
+        reservations:
+          cpus: "0.0001"
+          memory: 10M
     container_name: chat-meilisearch
     image: getmeili/meilisearch:v1.0
     # ports: # Uncomment this to access meilisearch from outside docker
