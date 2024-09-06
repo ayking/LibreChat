@@ -19,6 +19,7 @@ services:
       - 3080:3080
     depends_on:
       - mongodb
+      - rag_api
     restart: always
     extra_hosts:
     - "host.docker.internal:host-gateway"
@@ -29,9 +30,14 @@ services:
       - NODE_ENV=production
       - MONGO_URI=mongodb://mongodb:27017/LibreChat
       - MEILI_HOST=http://meilisearch:7700
+      - RAG_PORT=${RAG_PORT:-8000}
+      - RAG_API_URL=http://rag_api:${RAG_PORT:-8000}
     volumes:
+      - type: bind
+        source: ./librechat.yaml
+        target: /app/librechat.yaml
       - ./images:/app/client/public/images
-      - ./librechat.yaml:/app/librechat.yaml
+      - ./logs:/app/api/logs
   client:
     deploy:
       resources:
@@ -83,7 +89,8 @@ services:
           cpus: "0.0001"
           memory: 10M
     container_name: chat-meilisearch
-    image: getmeili/meilisearch:v1.0
+    image: getmeili/meilisearch:v1.7.3
+    restart: always
     # ports: # Uncomment this to access meilisearch from outside docker
     #   - 7700:7700 # if exposing these ports, make sure your master key is not the default value
     env_file:
@@ -99,4 +106,24 @@ services:
       - ./certbot/www/:/var/www/certbot/:rw
       - ./certbot/conf/:/etc/letsencrypt/:rw
       - ./acme-challenge/:/var/www/acme-challenge/:rw
+  vectordb:
+    image: ankane/pgvector:latest
+    environment:
+      POSTGRES_DB: mydatabase
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+    restart: always
+    volumes:
+      - ./postgresql:/var/lib/postgresql/data
+  rag_api:
+    image: ghcr.io/danny-avila/librechat-rag-api-dev-lite:latest
+    environment:
+      - DB_HOST=vectordb
+      - RAG_PORT=${RAG_PORT:-8000}
+    restart: always
+    depends_on:
+      - vectordb
+    env_file:
+      - .env
+
 

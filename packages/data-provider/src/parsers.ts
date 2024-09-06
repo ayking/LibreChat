@@ -1,5 +1,8 @@
-import type { TConversation, TPreset } from './schemas';
-import type { TEndpointOption } from './types';
+import type { ZodIssue } from 'zod';
+import type * as a from './types/assistants';
+import type * as s from './schemas';
+import type * as t from './types';
+import { ContentTypes } from './types/assistants';
 import {
   EModelEndpoint,
   openAISchema,
@@ -14,6 +17,7 @@ import {
   compactAnthropicSchema,
   compactChatGPTSchema,
   compactPluginsSchema,
+  compactAssistantSchema,
 } from './schemas';
 import { alternateName } from './config';
 
@@ -36,11 +40,108 @@ const endpointSchemas: Record<EModelEndpoint, EndpointSchema> = {
   [EModelEndpoint.chatGPTBrowser]: chatGPTBrowserSchema,
   [EModelEndpoint.gptPlugins]: gptPluginsSchema,
   [EModelEndpoint.assistants]: assistantSchema,
+  [EModelEndpoint.azureAssistants]: assistantSchema,
 };
 
 // const schemaCreators: Record<EModelEndpoint, (customSchema: DefaultSchemaValues) => EndpointSchema> = {
 //   [EModelEndpoint.google]: createGoogleSchema,
 // };
+
+/** Get the enabled endpoints from the `ENDPOINTS` environment variable */
+export function getEnabledEndpoints() {
+  const defaultEndpoints: string[] = [
+    EModelEndpoint.openAI,
+    EModelEndpoint.assistants,
+    EModelEndpoint.azureAssistants,
+    EModelEndpoint.azureOpenAI,
+    EModelEndpoint.google,
+    EModelEndpoint.bingAI,
+    EModelEndpoint.chatGPTBrowser,
+    EModelEndpoint.gptPlugins,
+    EModelEndpoint.anthropic,
+  ];
+
+  const endpointsEnv = process.env.ENDPOINTS || '';
+  let enabledEndpoints = defaultEndpoints;
+  if (endpointsEnv) {
+    enabledEndpoints = endpointsEnv
+      .split(',')
+      .filter((endpoint) => endpoint?.trim())
+      .map((endpoint) => endpoint.trim());
+  }
+  return enabledEndpoints;
+}
+
+/** Orders an existing EndpointsConfig object based on enabled endpoint/custom ordering */
+export function orderEndpointsConfig(endpointsConfig: t.TEndpointsConfig) {
+  if (!endpointsConfig) {
+    return {};
+  }
+  const enabledEndpoints = getEnabledEndpoints();
+  const endpointKeys = Object.keys(endpointsConfig);
+  const defaultCustomIndex = enabledEndpoints.indexOf(EModelEndpoint.custom);
+  return endpointKeys.reduce(
+    (accumulatedConfig: Record<string, t.TConfig | null | undefined>, currentEndpointKey) => {
+      const isCustom = !(currentEndpointKey in EModelEndpoint);
+      const isEnabled = enabledEndpoints.includes(currentEndpointKey);
+      if (!isEnabled && !isCustom) {
+        return accumulatedConfig;
+      }
+
+      const index = enabledEndpoints.indexOf(currentEndpointKey);
+
+      if (isCustom) {
+        accumulatedConfig[currentEndpointKey] = {
+          order: defaultCustomIndex >= 0 ? defaultCustomIndex : 9999,
+          ...(endpointsConfig[currentEndpointKey] as Omit<t.TConfig, 'order'> & { order?: number }),
+        };
+      } else if (endpointsConfig[currentEndpointKey]) {
+        accumulatedConfig[currentEndpointKey] = {
+          ...endpointsConfig[currentEndpointKey],
+          order: index,
+        };
+      }
+      return accumulatedConfig;
+    },
+    {},
+  );
+}
+
+/** Converts an array of Zod issues into a string. */
+export function errorsToString(errors: ZodIssue[]) {
+  return errors
+    .map((error) => {
+      const field = error.path.join('.');
+      const message = error.message;
+
+      return `${field}: ${message}`;
+    })
+    .join(' ');
+}
+
+export const envVarRegex = /^\${(.+)}$/;
+
+/** Extracts the value of an environment variable from a string. */
+export function extractEnvVariable(value: string) {
+  const envVarMatch = value.match(envVarRegex);
+  if (envVarMatch) {
+    return process.env[envVarMatch[1]] || value;
+  }
+  return value;
+}
+
+/** Resolves header values to env variables if detected */
+export function resolveHeaders(headers: Record<string, string> | undefined) {
+  const resolvedHeaders = { ...(headers ?? {}) };
+
+  if (headers && typeof headers === 'object' && !Array.isArray(headers)) {
+    Object.keys(headers).forEach((key) => {
+      resolvedHeaders[key] = extractEnvVariable(headers[key]);
+    });
+  }
+
+  return resolvedHeaders;
+}
 
 export function getFirstDefinedValue(possibleValues: string[]) {
   let returnValue;
@@ -66,7 +167,7 @@ export const parseConvo = ({
 }: {
   endpoint: EModelEndpoint;
   endpointType?: EModelEndpoint;
-  conversation: Partial<TConversation | TPreset>;
+  conversation: Partial<s.TConversation | s.TPreset>;
   possibleValues?: TPossibleValues;
   // TODO: POC for default schema
   // defaultSchema?: Partial<EndpointSchema>,
@@ -83,7 +184,7 @@ export const parseConvo = ({
   //   schema = schemaCreators[endpoint](defaultSchema);
   // }
 
-  const convo = schema.parse(conversation) as TConversation;
+  const convo = schema.parse(conversation) as s.TConversation;
   const { models, secondaryModels } = possibleValues ?? {};
 
   if (models && convo) {
@@ -97,7 +198,7 @@ export const parseConvo = ({
   return convo;
 };
 
-export const getResponseSender = (endpointOption: TEndpointOption): string => {
+export const getResponseSender = (endpointOption: t.TEndpointOption): string => {
   const { model, endpoint, endpointType, modelDisplayLabel, chatGptLabel, modelLabel, jailbreak } =
     endpointOption;
 
@@ -164,7 +265,7 @@ export const getResponseSender = (endpointOption: TEndpointOption): string => {
 
 type CompactEndpointSchema =
   | typeof compactOpenAISchema
-  | typeof assistantSchema
+  | typeof compactAssistantSchema
   | typeof compactGoogleSchema
   | typeof bingAISchema
   | typeof compactAnthropicSchema
@@ -175,7 +276,8 @@ const compactEndpointSchemas: Record<string, CompactEndpointSchema> = {
   [EModelEndpoint.openAI]: compactOpenAISchema,
   [EModelEndpoint.azureOpenAI]: compactOpenAISchema,
   [EModelEndpoint.custom]: compactOpenAISchema,
-  [EModelEndpoint.assistants]: assistantSchema,
+  [EModelEndpoint.assistants]: compactAssistantSchema,
+  [EModelEndpoint.azureAssistants]: compactAssistantSchema,
   [EModelEndpoint.google]: compactGoogleSchema,
   /* BingAI needs all fields */
   [EModelEndpoint.bingAI]: bingAISchema,
@@ -192,7 +294,7 @@ export const parseCompactConvo = ({
 }: {
   endpoint?: EModelEndpoint;
   endpointType?: EModelEndpoint;
-  conversation: Partial<TConversation | TPreset>;
+  conversation: Partial<s.TConversation | s.TPreset>;
   possibleValues?: TPossibleValues;
   // TODO: POC for default schema
   // defaultSchema?: Partial<EndpointSchema>,
@@ -209,7 +311,7 @@ export const parseCompactConvo = ({
     schema = compactEndpointSchemas[endpointType];
   }
 
-  const convo = schema.parse(conversation) as TConversation;
+  const convo = schema.parse(conversation) as s.TConversation;
   // const { models, secondaryModels } = possibleValues ?? {};
   const { models } = possibleValues ?? {};
 
@@ -223,3 +325,25 @@ export const parseCompactConvo = ({
 
   return convo;
 };
+
+export function parseTextParts(contentParts: a.TMessageContentParts[]): string {
+  let result = '';
+
+  for (const part of contentParts) {
+    if (part.type === ContentTypes.TEXT) {
+      const textValue = part.text.value;
+
+      if (
+        result.length > 0 &&
+        textValue.length > 0 &&
+        result[result.length - 1] !== ' ' &&
+        textValue[0] !== ' '
+      ) {
+        result += ' ';
+      }
+      result += textValue;
+    }
+  }
+
+  return result;
+}
