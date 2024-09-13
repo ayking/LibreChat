@@ -7,8 +7,8 @@ services:
           cpus: "0.3"
           memory: 150M
         reservations:
-          cpus: "0.0001"
-          memory: 20M
+          cpus: "0.01"
+          memory: 50M
     build:
       context: .
       dockerfile: Dockerfile.multi
@@ -39,7 +39,7 @@ services:
           cpus: "0.1"
           memory: 50M
         reservations:
-          cpus: "0.0001"
+          cpus: "0.01"
           memory: 10M
     build:
       context: .
@@ -63,7 +63,7 @@ services:
           cpus: "0.3"
           memory: 100M
         reservations:
-          cpus: "0.0001"
+          cpus: "0.01"
           memory: 20M
     container_name: chat-mongodb
     # ports:  # Uncomment this to access mongodb from outside docker, not safe in deployment
@@ -80,7 +80,7 @@ services:
           cpus: "0.1"
           memory: 50M
         reservations:
-          cpus: "0.0001"
+          cpus: "0.01"
           memory: 10M
     container_name: chat-meilisearch
     image: getmeili/meilisearch:v1.0
