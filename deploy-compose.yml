@@ -5,7 +5,7 @@ services:
       resources:
         limits:
           cpus: "0.3"
-          memory: 150M
+          memory: 200M
         reservations:
           cpus: "0.01"
           memory: 50M
@@ -20,15 +20,13 @@ services:
     depends_on:
       - mongodb
     restart: always
-    extra_hosts:
-    - "host.docker.internal:host-gateway"
     env_file:
       - .env
     environment:
       - HOST=0.0.0.0
       - NODE_ENV=production
       - MONGO_URI=mongodb://mongodb:27017/LibreChat
-      - MEILI_HOST=http://meilisearch:7700
+      # - MEILI_HOST=http://meilisearch:7700
     volumes:
       - ./images:/app/client/public/images
       - ./librechat.yaml:/app/librechat.yaml
@@ -61,10 +59,10 @@ services:
       resources:
         limits:
           cpus: "0.3"
-          memory: 100M
+          memory: 150M
         reservations:
           cpus: "0.01"
-          memory: 20M
+          memory: 50M
     container_name: chat-mongodb
     # ports:  # Uncomment this to access mongodb from outside docker, not safe in deployment
     #   - 27018:27017
@@ -73,26 +71,26 @@ services:
     volumes:
       - ./data-node:/data/db
     command: mongod --noauth
-  meilisearch:
-    deploy:
-      resources:
-        limits:
-          cpus: "0.1"
-          memory: 200M
-        reservations:
-          cpus: "0.01"
-          memory: 10M
-    container_name: chat-meilisearch
-    image: getmeili/meilisearch:v1.0
-    # ports: # Uncomment this to access meilisearch from outside docker
-    #   - 7700:7700 # if exposing these ports, make sure your master key is not the default value
-    env_file:
-      - .env
-    environment:
-      - MEILI_HOST=http://meilisearch:7700
-      - MEILI_NO_ANALYTICS=true
-    volumes:
-      - ./meili_data:/meili_data
+  # meilisearch:
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: "0.1"
+  #         memory: 500M
+  #       reservations:
+  #         cpus: "0.01"
+  #         memory: 10M
+  #   container_name: chat-meilisearch
+  #   image: getmeili/meilisearch:v1.0
+  #   # ports: # Uncomment this to access meilisearch from outside docker
+  #   #   - 7700:7700 # if exposing these ports, make sure your master key is not the default value
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - MEILI_HOST=http://meilisearch:7700
+  #     - MEILI_NO_ANALYTICS=true
+  #   volumes:
+  #     - ./meili_data:/meili_data
   certbot:
     image: certbot/certbot:latest
     volumes:
